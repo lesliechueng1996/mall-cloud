@@ -316,3 +316,13 @@ COMMENT ON COLUMN "user".t_admin_role_relation.admin_id
 
 COMMENT ON COLUMN "user".t_admin_role_relation.role_id
     IS '角色ID';
+
+CREATE INDEX t_admin_role_relation_admin_id_index
+    ON "user".t_admin_role_relation USING btree
+    (admin_id ASC NULLS LAST)
+;
+
+CREATE INDEX t_admin_role_relation_role_id_index
+    ON "user".t_admin_role_relation USING btree
+    (role_id ASC NULLS LAST)
+;
