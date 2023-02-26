@@ -1,5 +1,6 @@
 package org.leslie.auth.repository;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -89,8 +90,8 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
         try {
             clientSettings = data.getClientSettings() == null ? null : ClientSettings.withSettings(objectMapper.readValue(data.getClientSettings(), new TypeReference<>() {
             })).build();
-            tokenSettings = data.getTokenSettings() == null ? null : TokenSettings.withSettings(objectMapper.readValue(data.getTokenSettings(), new TypeReference<>() {
-            })).build();
+//            tokenSettings = data.getTokenSettings() == null ? null : TokenSettings.withSettings(objectMapper.readValue(data.getTokenSettings(), new TypeReference<>() {
+//            })).build();
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
@@ -119,7 +120,7 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
                         Arrays.stream(data.getScopes().split(",")).toList()
                 ))
                 .clientSettings(clientSettings)
-                .tokenSettings(tokenSettings)
+//                .tokenSettings(tokenSettings)
                 .build();
     }
 }
