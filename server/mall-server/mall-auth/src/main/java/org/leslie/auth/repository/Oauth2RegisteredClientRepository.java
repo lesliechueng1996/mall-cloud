@@ -1,6 +1,6 @@
 package org.leslie.auth.repository;
 
-import org.leslie.auth.entity.Oauth2RegisteredClient;
+import org.leslie.auth.pojo.entity.Oauth2RegisteredClient;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

@@ -1,126 +1,159 @@
 package org.leslie.auth.repository;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
-import org.leslie.auth.entity.Oauth2RegisteredClient;
+import org.leslie.auth.pojo.entity.Oauth2RegisteredClient;
+import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationServerJackson2Module;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * @author zhang
  * date created in 2023/2/25 02:48
  */
 @Component
-@AllArgsConstructor
 public class JpaRegisteredClientRepository implements RegisteredClientRepository {
+    private final Oauth2RegisteredClientRepository clientRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private final Oauth2RegisteredClientRepository repository;
-    private final ObjectMapper objectMapper;
+    public JpaRegisteredClientRepository(Oauth2RegisteredClientRepository clientRepository) {
+        Assert.notNull(clientRepository, "clientRepository cannot be null");
+        this.clientRepository = clientRepository;
+
+        ClassLoader classLoader = JpaRegisteredClientRepository.class.getClassLoader();
+        List<Module> securityModules = SecurityJackson2Modules.getModules(classLoader);
+        this.objectMapper.registerModules(securityModules);
+        this.objectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
+    }
 
     @Override
     public void save(RegisteredClient registeredClient) {
-        Optional<Oauth2RegisteredClient> optioanl = repository.findById(registeredClient.getId());
-        Oauth2RegisteredClient data;
-
-        data = optioanl.orElseGet(Oauth2RegisteredClient::new);
-
-        data.setClientId(registeredClient.getClientId());
-        data.setClientIdIssuedAt(registeredClient.getClientIdIssuedAt() == null ? Instant.now() : registeredClient.getClientIdIssuedAt());
-        data.setClientSecret(registeredClient.getClientSecret());
-        data.setClientSecretExpiresAt(registeredClient.getClientSecretExpiresAt() == null ? null : registeredClient.getClientSecretExpiresAt());
-        data.setClientName(registeredClient.getClientName());
-        data.setClientAuthenticationMethods(StringUtils.collectionToCommaDelimitedString(
-                registeredClient.getClientAuthenticationMethods()
-                        .stream()
-                        .map(ClientAuthenticationMethod::getValue)
-                        .collect(Collectors.toList())));
-        data.setAuthorizationGrantTypes(StringUtils.collectionToCommaDelimitedString(
-                registeredClient.getAuthorizationGrantTypes()
-                        .stream()
-                        .map(AuthorizationGrantType::getValue)
-                        .collect(Collectors.toList())));
-        data.setRedirectUris(StringUtils.collectionToCommaDelimitedString(registeredClient.getRedirectUris()));
-        data.setScopes(StringUtils.collectionToCommaDelimitedString(registeredClient.getScopes()));
-
-        try {
-            data.setClientSettings(objectMapper.writeValueAsString(registeredClient.getClientSettings().getSettings()));
-            data.setTokenSettings(objectMapper.writeValueAsString(registeredClient.getTokenSettings().getSettings()));
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException(e.getMessage(), e);
-        }
-
-        repository.save(data);
+        Assert.notNull(registeredClient, "registeredClient cannot be null");
+        this.clientRepository.save(toEntity(registeredClient));
     }
 
     @Override
     public RegisteredClient findById(String id) {
-        Optional<Oauth2RegisteredClient> optional  = repository.findById(id);
-        return formatRegisteredClient(optional);
+        Assert.hasText(id, "id cannot be empty");
+        return this.clientRepository.findById(id).map(this::toObject).orElse(null);
     }
 
     @Override
     public RegisteredClient findByClientId(String clientId) {
-        Optional<Oauth2RegisteredClient> optional  = repository.findByClientId(clientId);
-        return formatRegisteredClient(optional);
+        Assert.hasText(clientId, "clientId cannot be empty");
+        return this.clientRepository.findByClientId(clientId).map(this::toObject).orElse(null);
     }
 
-    private RegisteredClient formatRegisteredClient(Optional<Oauth2RegisteredClient> optional) {
-        if (optional.isEmpty()) {
-            return null;
-        }
+    private RegisteredClient toObject(Oauth2RegisteredClient client) {
+        Set<String> clientAuthenticationMethods = StringUtils.commaDelimitedListToSet(
+                client.getClientAuthenticationMethods());
+        Set<String> authorizationGrantTypes = StringUtils.commaDelimitedListToSet(
+                client.getAuthorizationGrantTypes());
+        Set<String> redirectUris = StringUtils.commaDelimitedListToSet(
+                client.getRedirectUris());
+        Set<String> clientScopes = StringUtils.commaDelimitedListToSet(
+                client.getScopes());
 
-        Oauth2RegisteredClient data = optional.get();
-        ClientSettings clientSettings;
-        TokenSettings tokenSettings;
+        RegisteredClient.Builder builder = RegisteredClient.withId(client.getId())
+                .clientId(client.getClientId())
+                .clientIdIssuedAt(client.getClientIdIssuedAt())
+                .clientSecret(client.getClientSecret())
+                .clientSecretExpiresAt(client.getClientSecretExpiresAt())
+                .clientName(client.getClientName())
+                .clientAuthenticationMethods(authenticationMethods ->
+                        clientAuthenticationMethods.forEach(authenticationMethod ->
+                                authenticationMethods.add(resolveClientAuthenticationMethod(authenticationMethod))))
+                .authorizationGrantTypes((grantTypes) ->
+                        authorizationGrantTypes.forEach(grantType ->
+                                grantTypes.add(resolveAuthorizationGrantType(grantType))))
+                .redirectUris((uris) -> uris.addAll(redirectUris))
+                .scopes((scopes) -> scopes.addAll(clientScopes));
+
+        Map<String, Object> clientSettingsMap = parseMap(client.getClientSettings());
+        builder.clientSettings(ClientSettings.withSettings(clientSettingsMap).build());
+
+        Map<String, Object> tokenSettingsMap = parseMap(client.getTokenSettings());
+        builder.tokenSettings(TokenSettings.withSettings(tokenSettingsMap).build());
+
+        return builder.build();
+    }
+
+    private Oauth2RegisteredClient toEntity(RegisteredClient registeredClient) {
+        List<String> clientAuthenticationMethods = new ArrayList<>(registeredClient.getClientAuthenticationMethods().size());
+        registeredClient.getClientAuthenticationMethods().forEach(clientAuthenticationMethod ->
+                clientAuthenticationMethods.add(clientAuthenticationMethod.getValue()));
+
+        List<String> authorizationGrantTypes = new ArrayList<>(registeredClient.getAuthorizationGrantTypes().size());
+        registeredClient.getAuthorizationGrantTypes().forEach(authorizationGrantType ->
+                authorizationGrantTypes.add(authorizationGrantType.getValue()));
+
+        Oauth2RegisteredClient entity = new Oauth2RegisteredClient();
+        entity.setId(registeredClient.getId());
+        entity.setClientId(registeredClient.getClientId());
+        entity.setClientIdIssuedAt(registeredClient.getClientIdIssuedAt());
+        entity.setClientSecret(registeredClient.getClientSecret());
+        entity.setClientSecretExpiresAt(registeredClient.getClientSecretExpiresAt());
+        entity.setClientName(registeredClient.getClientName());
+        entity.setClientAuthenticationMethods(StringUtils.collectionToCommaDelimitedString(clientAuthenticationMethods));
+        entity.setAuthorizationGrantTypes(StringUtils.collectionToCommaDelimitedString(authorizationGrantTypes));
+        entity.setRedirectUris(StringUtils.collectionToCommaDelimitedString(registeredClient.getRedirectUris()));
+        entity.setScopes(StringUtils.collectionToCommaDelimitedString(registeredClient.getScopes()));
+        entity.setClientSettings(writeMap(registeredClient.getClientSettings().getSettings()));
+        entity.setTokenSettings(writeMap(registeredClient.getTokenSettings().getSettings()));
+
+        return entity;
+    }
+
+    private Map<String, Object> parseMap(String data) {
         try {
-            clientSettings = data.getClientSettings() == null ? null : ClientSettings.withSettings(objectMapper.readValue(data.getClientSettings(), new TypeReference<>() {
-            })).build();
-//            tokenSettings = data.getTokenSettings() == null ? null : TokenSettings.withSettings(objectMapper.readValue(data.getTokenSettings(), new TypeReference<>() {
-//            })).build();
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return this.objectMapper.readValue(data, new TypeReference<>() {
+            });
+        } catch (Exception ex) {
+            throw new IllegalArgumentException(ex.getMessage(), ex);
         }
+    }
 
-        return RegisteredClient
-                .withId(data.getId())
-                .clientId(data.getClientId())
-                .clientIdIssuedAt(Optional.ofNullable(data.getClientIdIssuedAt()).orElse(new Date().toInstant()))
-                .clientSecret(data.getClientSecret())
-                .clientSecretExpiresAt(data.getClientSecretExpiresAt())
-                .clientName(data.getClientName())
-                .clientAuthenticationMethods(clientAuthenticationMethods -> clientAuthenticationMethods.addAll(
-                        Arrays.stream(data.getClientAuthenticationMethods().split(","))
-                                .map(ClientAuthenticationMethod::new)
-                                .collect(Collectors.toSet())
-                ))
-                .authorizationGrantTypes(authorizationGrantTypes -> authorizationGrantTypes.addAll(
-                        Arrays.stream(data.getAuthorizationGrantTypes().split(","))
-                                .map(AuthorizationGrantType::new)
-                                .collect(Collectors.toSet())
-                ))
-                .redirectUris(strings -> strings.addAll(
-                        Arrays.stream(data.getRedirectUris().split(",")).toList()
-                ))
-                .scopes(strings -> strings.addAll(
-                        Arrays.stream(data.getScopes().split(",")).toList()
-                ))
-                .clientSettings(clientSettings)
-//                .tokenSettings(tokenSettings)
-                .build();
+    private String writeMap(Map<String, Object> data) {
+        try {
+            return this.objectMapper.writeValueAsString(data);
+        } catch (Exception ex) {
+            throw new IllegalArgumentException(ex.getMessage(), ex);
+        }
+    }
+
+    private static AuthorizationGrantType resolveAuthorizationGrantType(String authorizationGrantType) {
+        if (AuthorizationGrantType.AUTHORIZATION_CODE.getValue().equals(authorizationGrantType)) {
+            return AuthorizationGrantType.AUTHORIZATION_CODE;
+        } else if (AuthorizationGrantType.CLIENT_CREDENTIALS.getValue().equals(authorizationGrantType)) {
+            return AuthorizationGrantType.CLIENT_CREDENTIALS;
+        } else if (AuthorizationGrantType.REFRESH_TOKEN.getValue().equals(authorizationGrantType)) {
+            return AuthorizationGrantType.REFRESH_TOKEN;
+        }
+        return new AuthorizationGrantType(authorizationGrantType);              // Custom authorization grant type
+    }
+
+    private static ClientAuthenticationMethod resolveClientAuthenticationMethod(String clientAuthenticationMethod) {
+        if (ClientAuthenticationMethod.CLIENT_SECRET_BASIC.getValue().equals(clientAuthenticationMethod)) {
+            return ClientAuthenticationMethod.CLIENT_SECRET_BASIC;
+        } else if (ClientAuthenticationMethod.CLIENT_SECRET_POST.getValue().equals(clientAuthenticationMethod)) {
+            return ClientAuthenticationMethod.CLIENT_SECRET_POST;
+        } else if (ClientAuthenticationMethod.NONE.getValue().equals(clientAuthenticationMethod)) {
+            return ClientAuthenticationMethod.NONE;
+        }
+        return new ClientAuthenticationMethod(clientAuthenticationMethod);      // Custom client authentication method
     }
 }

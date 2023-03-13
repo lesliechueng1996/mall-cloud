@@ -1,15 +1,14 @@
 package org.leslie.auth.service.impl;
 
-import lombok.AllArgsConstructor;
-import org.leslie.auth.entity.AuthorizationConsent;
+import org.leslie.auth.pojo.entity.AuthorizationConsent;
 import org.leslie.auth.repository.AuthorizationConsentRepository;
-import org.leslie.auth.repository.JpaRegisteredClientRepository;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsent;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -21,12 +20,18 @@ import java.util.Set;
  * @author zhang
  * date created in 2023/2/27 01:12
  */
-//@Service
-@AllArgsConstructor
+@Service
 public class JpaOAuth2AuthorizationConsentServiceImpl implements OAuth2AuthorizationConsentService {
 
     private final AuthorizationConsentRepository authorizationConsentRepository;
-    private final JpaRegisteredClientRepository registeredClientRepository;
+    private final RegisteredClientRepository registeredClientRepository;
+
+    public JpaOAuth2AuthorizationConsentServiceImpl(AuthorizationConsentRepository authorizationConsentRepository, RegisteredClientRepository registeredClientRepository) {
+        Assert.notNull(authorizationConsentRepository, "authorizationConsentRepository cannot be null");
+        Assert.notNull(registeredClientRepository, "registeredClientRepository cannot be null");
+        this.authorizationConsentRepository = authorizationConsentRepository;
+        this.registeredClientRepository = registeredClientRepository;
+    }
 
     @Override
     public void save(OAuth2AuthorizationConsent authorizationConsent) {

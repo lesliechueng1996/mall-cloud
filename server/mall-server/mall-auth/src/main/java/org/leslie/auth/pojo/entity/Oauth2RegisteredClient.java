@@ -1,9 +1,6 @@
-package org.leslie.auth.entity;
+package org.leslie.auth.pojo.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,7 +11,9 @@ import java.time.Instant;
  * date created in 2023/2/25 01:36
  */
 @Entity
-@Table(name = "t_oauth2_registered_client", schema = "usr")
+@Table(name = "t_oauth2_registered_client", schema = "usr", indexes = {
+        @Index(name = "t_oauth2_registered_client_client_id_uk", columnList = "clientId", unique = true)
+})
 @Getter
 @Setter
 public class Oauth2RegisteredClient {

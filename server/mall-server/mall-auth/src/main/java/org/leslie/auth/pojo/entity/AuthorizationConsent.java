@@ -1,4 +1,4 @@
-package org.leslie.auth.entity;
+package org.leslie.auth.pojo.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;

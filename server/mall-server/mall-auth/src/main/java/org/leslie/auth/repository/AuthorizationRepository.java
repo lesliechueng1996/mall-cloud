@@ -1,6 +1,6 @@
 package org.leslie.auth.repository;
 
-import org.leslie.auth.entity.Authorization;
+import org.leslie.auth.pojo.entity.Authorization;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

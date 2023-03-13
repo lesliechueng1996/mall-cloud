@@ -1,14 +1,10 @@
-package org.leslie.auth.entity;
+package org.leslie.auth.pojo.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.leslie.auth.enums.AdminStatus;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 
-import java.io.Serial;
-import java.util.Collection;
 import java.util.Date;
 
 /**
@@ -19,12 +15,7 @@ import java.util.Date;
 @Table(name = "t_admin", schema = "usr")
 @Getter
 @Setter
-public class Admin implements UserDetails {
-
-    @Serial
-    @Transient
-    private static final long serialVersionUID = 1485451138155122351L;
-
+public class Admin {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "t_admin_id_seq")
     @SequenceGenerator(schema = "usr", name = "t_admin_id_seq", sequenceName = "t_admin_id_seq", allocationSize = 1)
@@ -45,29 +36,7 @@ public class Admin implements UserDetails {
     @Column(nullable = false)
     private Integer status;
 
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        // TODO
-        return null;
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
-
-    @Override
     public boolean isEnabled() {
-        return status == AdminStatus.ENABLED.ordinal();
+        return this.status == AdminStatus.ENABLED.ordinal();
     }
 }

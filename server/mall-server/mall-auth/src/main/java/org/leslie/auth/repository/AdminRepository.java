@@ -1,6 +1,6 @@
 package org.leslie.auth.repository;
 
-import org.leslie.auth.entity.Admin;
+import org.leslie.auth.pojo.entity.Admin;
 import org.springframework.data.repository.Repository;
 
 /**
