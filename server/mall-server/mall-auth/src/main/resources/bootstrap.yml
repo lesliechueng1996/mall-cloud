@@ -1,0 +1,16 @@
+server:
+  port: 20000
+
+spring:
+  application:
+    name: MALL-AUTH
+  profiles:
+    active: dev
+  cloud:
+    consul:
+      host: localhost
+      port: 8500
+      discovery:
+        health-check-interval: 60s
+      config:
+        format: yaml

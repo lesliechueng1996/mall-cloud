@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    username: leslie
+    password: ""
+    url: jdbc:postgresql://localhost:5432/mall
+    hikari:
+      connection-timeout: 10000
+      validation-timeout: 3000
+      idle-timeout: 60000
+      max-lifetime: 60000
+      maximum-pool-size: 10
+      minimum-idle: 5
+  jpa:
+    database: postgresql
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+
+mall-auth:
+  web-client-id: mall-web-client
+  web-client-secret: password
+  web-redirect-url: http://baidu.com
+  web-root-username: leslie
+  web-root-password: password
+  access-token-live-seconds: 1800
+  refresh-token-live-seconds: 86400
