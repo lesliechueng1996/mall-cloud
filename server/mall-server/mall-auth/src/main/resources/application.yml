@@ -1,9 +1,4 @@
-server:
-  port: 20000
-
 spring:
-  application:
-    name: MALL-AUTH
   datasource:
     driver-class-name: org.postgresql.Driver
     username: leslie

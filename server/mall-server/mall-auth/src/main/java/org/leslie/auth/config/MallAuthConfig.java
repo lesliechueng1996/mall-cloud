@@ -2,6 +2,7 @@ package org.leslie.auth.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 /**
@@ -9,6 +10,7 @@ import org.springframework.stereotype.Component;
  * date created in 2023/2/25 23:13
  */
 @ConfigurationProperties(prefix = "mall-auth")
+@RefreshScope
 @Component
 @Data
 public class MallAuthConfig {
